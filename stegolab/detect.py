@@ -23,27 +23,44 @@ from stegolab.encoder import HEADER_BYTES, parse_header
 PNG_END = b"IEND\xaeB`\x82"     # the IEND chunk type + its fixed CRC: a PNG must end here
 JPEG_END = b"\xff\xd9"
 
-
 def find_appended_data(path: str) -> bytes:
     """Return any bytes stored AFTER the image's end marker (empty bytes if there are none)."""
+
     with open(path, "rb") as fh:
         data = fh.read()
-    # TODO 3.1  PNG files start with b"\x89PNG" and must end with PNG_END.
-    #           Find PNG_END with data.find(...). Return everything after it.
-    #           JPEG files start with b"\xff\xd8" and end with JPEG_END: use data.rfind(...).
-    #           If the marker is missing or the format is unknown, return b"".
-    raise NotImplementedError("TODO (Task 3.1)")
 
+    if data.startswith(b"\x89PNG"):
+        end = data.find(PNG_END)
+        if end == -1:
+            return b""
+        return data[end + len(PNG_END):]
+
+    elif data.startswith(b"\xff\xd8"):
+        end = data.rfind(JPEG_END)
+        if end == -1:
+            return b""
+        return data[end + len(JPEG_END):]
+
+    return b""
 
 def read_metadata(path: str) -> Dict[str, str]:
     """Return text metadata: PNG text chunks and EXIF fields, as {name: value}."""
+
     img = Image.open(path)
     found: Dict[str, str] = {}
-    # TODO 3.2  PNG text chunks live in img.info: copy every key whose value is a str.
-    #           EXIF lives in img.getexif(): it maps numeric tag ids to values.
-    #           Use TAGS.get(tag_id, str(tag_id)) to turn the id into a readable name.
-    #           Return the dictionary.
-    raise NotImplementedError("TODO (Task 3.2)")
+
+    # PNG text chunks
+    for key, value in img.info.items():
+        if isinstance(value, str):
+            found[key] = value
+
+    # EXIF metadata
+    exif = img.getexif()
+    for tag_id, value in exif.items():
+        tag_name = TAGS.get(tag_id, str(tag_id))
+        found[tag_name] = str(value)
+
+    return found
 
 
 def lsb_ratios(path: str, window: int = 2000) -> Dict[str, float]:
